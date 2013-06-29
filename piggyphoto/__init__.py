@@ -738,12 +738,12 @@ class cameraWidget(object):
     def add_choice(self, choice):
         check(gp.gp_widget_add_choice(self._w, str(choice)))
 
-    def count_choices(self, choice):
+    def count_choices(self):
         return gp.gp_widget_count_choices(self._w)
 
     def get_choice(self, choice_number):
         choice = ctypes.c_char_p()
-        check(gp.gp_widget_add_choice(self._w, int(choice_number), PTR(choice)))
+        check(gp.gp_widget_get_choice(self._w, int(choice_number), PTR(choice)))
         return choice.value
 
     def createdoc(self):
