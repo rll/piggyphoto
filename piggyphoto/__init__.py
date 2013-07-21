@@ -8,7 +8,7 @@
 # Some functions return errors which can be fixed by retrying.
 # For example, capture_preview on Canon 550D fails the first time, but subsequent calls are OK.
 # Retries are performed on: camera.capture_preview, camera.capture_image and camera.init()
-retries = 1
+retries = 10
 
 # This is run if gp_camera_init returns -60 (Could not lock the device) and retries >= 1.
 unmount_cmd = 'gvfs-mount -s gphoto2'
@@ -147,6 +147,12 @@ GP_OK = 0
 GP_CAPTURE_IMAGE = 0
 # CameraFileType enum in 'gphoto2-file.h'
 GP_FILE_TYPE_NORMAL = 1
+# CameraEventType enum in 'gphoto2-camera.h'
+GP_EVENT_UNKNOWN = 0
+GP_EVENT_TIMEOUT = 1
+GP_EVENT_FILE_ADDED = 2
+GP_EVENT_FOLDER_ADDED = 3
+GP_EVENT_CAPTURE_COMPLETE = 4
 
 
 
@@ -333,7 +339,19 @@ class camera(object):
         check(gp.gp_camera_trigger_capture(self._cam, context))
 
     def wait_for_event(self, timeout):
-        raise NotImplementedError
+        eventdata = ctypes.c_void_p()
+        event = ctypes.c_int(4)
+        timeout = ctypes.c_int(timeout)
+        check(gp.gp_camera_wait_for_event(self._cam, timeout, PTR(event), PTR(eventdata), context))
+        return (event.value, eventdata)
+
+    def wait_for_event_and_download(self, destpath, timeout=1000):
+        event = -1
+        while event != GP_EVENT_TIMEOUT:
+            event, data = self.wait_for_event(timeout)
+            if event == GP_EVENT_FILE_ADDED:
+                path = ctypes.cast(data, ctypes.POINTER(CameraFilePath)).contents
+                self.download_file(path.folder, path.name, destpath)
 
     def list_folders(self, path = "/"):
         l = cameraList()
